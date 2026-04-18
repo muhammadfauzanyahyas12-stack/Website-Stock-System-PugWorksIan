@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Management Stok Suku Cadang</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 p-4 md:p-8">
+
+    <div class="max-w-5xl mx-auto">
+        <header class="mb-8 text-center">
+            <h1 class="text-3xl font-black text-gray-800 tracking-tight">MANAJEMEN STOK & HARGA SPAREPARTS</h1>
+            <p class="text-gray-500">Kelola inventaris suku cadang Peugeot dengan mudah</p>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border-l-8 border-blue-500">
+                <p class="text-xs text-gray-400 font-bold uppercase">Total Modal (Aset Gudang)</p>
+                <p id="totalAsset" class="text-3xl font-black text-blue-600">Rp 0</p>
+            </div>
+            <div class="bg-white p-6 rounded-2xl shadow-sm border-l-8 border-green-500">
+                <p class="text-xs text-gray-400 font-bold uppercase">Potensi Profit Kotor</p>
+                <p id="totalProfit" class="text-3xl font-black text-green-600">Rp 0</p>
+            </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl shadow-sm mb-8 border border-gray-100">
+            <h2 class="font-bold mb-4 text-gray-700 flex items-center">
+                <span class="bg-blue-100 text-blue-600 p-1 rounded mr-2">+</span> Tambah Barang Baru
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <input id="pName" type="text" placeholder="Nama Suku Cadang" class="p-3 border rounded-xl bg-gray-50 outline-none focus:ring-2 focus:ring-blue-400">
+                <input id="pStock" type="number" placeholder="Jumlah Stok" class="p-3 border rounded-xl bg-gray-50 outline-none focus:ring-2 focus:ring-blue-400">
+                <input id="pBuy" type="number" placeholder="Harga Beli (Modal)" class="p-3 border rounded-xl bg-gray-50 outline-none focus:ring-2 focus:ring-blue-400">
+                <input id="pSell" type="number" placeholder="Harga Jual" class="p-3 border rounded-xl bg-gray-50 outline-none focus:ring-2 focus:ring-blue-400">
+                <input id="pLoc" type="text" placeholder="Lokasi (Contoh: Rak A1)" class="p-3 border rounded-xl bg-gray-50 outline-none focus:ring-2 focus:ring-blue-400">
+                <button onclick="addItem()" class="bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition h-full shadow-lg">Simpan Barang</button>
+            </div>
+        </div>
+
+        <div class="mb-4">
+            <input type="text" onkeyup="updateSearch(this.value)" placeholder="Cari nama barang atau lokasi..." class="w-full p-4 border-2 border-white rounded-2xl shadow-sm outline-none focus:border-blue-300 transition">
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
+            <table class="w-full text-left">
+                <thead>
+                    <tr class="bg-gray-50 border-b">
+                        <th class="p-4 text-xs font-bold text-gray-400 uppercase">Suku Cadang & Lokasi</th>
+                        <th class="p-4 text-xs font-bold text-gray-400 uppercase text-center">Stok</th>
+                        <th class="p-4 text-xs font-bold text-gray-400 uppercase text-right">Harga Jual</th>
+                        <th class="p-4 text-xs font-bold text-gray-400 uppercase text-right">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody id="inventoryBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        let inventory = JSON.parse(localStorage.getItem('myStockData')) || [];
+        let searchTerm = '';
+
+        function renderData() {
+            const body = document.getElementById('inventoryBody');
+            body.innerHTML = '';
+            let totalAsset = 0;
+            let totalProfit = 0;
+
+            const filtered = inventory.filter(item => 
+                item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                item.loc.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+
+            filtered.forEach((item, index) => {
+                const margin = item.sell - item.buy;
+                totalAsset += (item.stock * item.buy);
+                totalProfit += (item.stock * margin);
+
+                // Warna merah jika stok mau habis (di bawah 3)
+                const stockStyle = item.stock <= 3 ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600';
+
+                body.innerHTML += `
+                    <tr class="border-b hover:bg-gray-50 transition">
+                        <td class="p-4">
+                            <p class="font-bold text-gray-800">${item.name}</p>
+                            <p class="text-xs text-gray-400">📍 ${item.loc || 'Tanpa Lokasi'}</p>
+                        </td>
+                        <td class="p-4 text-center">
+                            <span class="px-3 py-1 ${stockStyle} rounded-full font-bold text-xs">
+                                ${item.stock} Unit
+                            </span>
+                        </td>
+                        <td class="p-4 text-right font-black text-gray-700 text-sm">
+                            Rp ${parseInt(item.sell).toLocaleString('id-ID')}
+                        </td>
+                        <td class="p-4 text-right">
+                            <button onclick="deleteItem(${index})" class="text-red-300 hover:text-red-600 transition">Hapus</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            document.getElementById('totalAsset').innerText = 'Rp ' + totalAsset.toLocaleString('id-ID');
+            document.getElementById('totalProfit').innerText = 'Rp ' + totalProfit.toLocaleString('id-ID');
+            localStorage.setItem('myStockData', JSON.stringify(inventory));
+        }
+
+        function updateSearch(val) {
+            searchTerm = val;
+            renderData();
+        }
+
+        function addItem() {
+            const name = document.getElementById('pName').value;
+            const stock = document.getElementById('pStock').value;
+            const buy = document.getElementById('pBuy').value;
+            const sell = document.getElementById('pSell').value;
+            const loc = document.getElementById('pLoc').value;
+
+            if(name && stock && buy && sell) {
+                inventory.push({ name, stock: Number(stock), buy: Number(buy), sell: Number(sell), loc });
+                renderData();
+                document.querySelectorAll('input').forEach(input => { if(input.type !== 'text' || input.id !== '') input.value = '' });
+            } else {
+                alert('Data harus lengkap ya!');
+            }
+        }
+
+        function deleteItem(index) {
+            if(confirm('Hapus data barang ini?')) {
+                inventory.splice(index, 1);
+                renderData();
+            }
+        }
+
+        renderData();
+    </script>
+</body>
+</html>
